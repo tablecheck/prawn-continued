@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Your contribution here
+
+## PrawnPDF 3.0.0.rc1
+
 ### Look for glyph in correct font
 
 Take the font style into account when looking for a glyph and fallback fonts are enabled.
