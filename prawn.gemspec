@@ -5,7 +5,7 @@ basedir = __dir__
 require "#{basedir}/lib/prawn/version"
 
 Gem::Specification.new do |spec|
-  spec.name = 'prawn'
+  spec.name = 'prawn-continued'
   spec.version = Prawn::VERSION
   spec.platform = Gem::Platform::RUBY
   spec.summary = 'A fast and nimble PDF generator for Ruby'
