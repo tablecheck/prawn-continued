@@ -4,7 +4,13 @@
 
 Your contribution here
 
+## PrawnPDF 3.0.0.rc2
+
+* Bugfix: Add file to auto-require `prawn-continued`.
+
 ## PrawnPDF 3.0.0.rc1
+
+* Rename gem to `prawn-continued`.
 
 ### Look for glyph in correct font
 

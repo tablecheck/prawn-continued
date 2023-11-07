@@ -11,7 +11,7 @@ on December 31, 2020. This prawn-continued gem will be released beginning at ver
 
 # Prawn: Fast, Nimble PDF Generation For Ruby
 
-[![Gem Version](https://badge.fury.io/rb/prawn.svg)](http://badge.fury.io/rb/prawn)
+[![Gem Version](https://badge.fury.io/rb/prawn.svg)](http://badge.fury.io/rb/prawn-continued)
 [![Build Status](https://github.com/tablecheck/prawn-continued/workflows/CI/badge.svg)](https://github.com/tablecheck/prawn-continued/actions?query=branch%3Amaster)
 [![Code Climate](https://codeclimate.com/github/tablecheck/prawn-continued/badges/gpa.svg)](https://codeclimate.com/github/tablecheck/prawn-continued)
 ![Maintained: yes](https://img.shields.io/badge/maintained-yes-brightgreen.svg)
