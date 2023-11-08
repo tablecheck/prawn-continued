@@ -4,11 +4,15 @@
 
 Your contribution here
 
-## PrawnPDF 3.0.0.rc2
+## Prawn Continued 3.0.0.rc3
+
+* Replace prawn.png and pigs.jpg with new images.
+
+## Prawn Continued 3.0.0.rc2
 
 * Bugfix: Add file to auto-require `prawn-continued`.
 
-## PrawnPDF 3.0.0.rc1
+## Prawn Continued 3.0.0.rc1
 
 * Rename gem to `prawn-continued`.
 
