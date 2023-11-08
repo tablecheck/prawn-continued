@@ -3,7 +3,7 @@ Prawn may be used under any of the following licenses:
 1. The Prawn License (see: LICENSE-PRAWN), which is similar to
    Matz's original licensing terms for Ruby.
 2. GPLv2 (see: LICENSE-GPLv2)
-3. GPLv3 (see: LICENSE-GPLv2)
+3. GPLv3 (see: LICENSE-GPLv3)
 
 The maintainers of this repository plan to migrate to the MIT License
 (see: LICENSE-MIT) in the future. Effective November 8, 2023, by
