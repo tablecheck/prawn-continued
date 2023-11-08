@@ -4,11 +4,15 @@
 
 Your contribution here
 
-## PrawnPDF 3.0.0.rc2
+## Prawn Continued 3.0.0.rc3
+
+* Rename gem to `prawn_continued` with underscore.
+
+## Prawn Continued 3.0.0.rc2
 
 * Bugfix: Add file to auto-require `prawn-continued`.
 
-## PrawnPDF 3.0.0.rc1
+## Prawn Continued 3.0.0.rc1
 
 * Rename gem to `prawn-continued`.
 

@@ -7,13 +7,13 @@ We welcome the changes in this fork to be upstreamed back into the original
 Prawn gem, and we harbor no ill will towards it or its maintainers.
 
 The most recent release of the original prawn gem is [v2.4.0](https://rubygems.org/gems/prawn/versions/2.4.0)
-on December 31, 2020. This prawn-continued gem will be released beginning at version 3.0.0.
+on December 31, 2020. This prawn_continued gem will be released beginning at version 3.0.0.
 
 # Prawn: Fast, Nimble PDF Generation For Ruby
 
-[![Gem Version](https://badge.fury.io/rb/prawn.svg)](http://badge.fury.io/rb/prawn-continued)
-[![Build Status](https://github.com/tablecheck/prawn-continued/workflows/CI/badge.svg)](https://github.com/tablecheck/prawn-continued/actions?query=branch%3Amaster)
-[![Code Climate](https://codeclimate.com/github/tablecheck/prawn-continued/badges/gpa.svg)](https://codeclimate.com/github/tablecheck/prawn-continued)
+[![Gem Version](https://badge.fury.io/rb/prawn.svg)](http://badge.fury.io/rb/prawn_continued)
+[![Build Status](https://github.com/tablecheck/prawn_continued/workflows/CI/badge.svg)](https://github.com/tablecheck/prawn_continued/actions?query=branch%3Amaster)
+[![Code Climate](https://codeclimate.com/github/tablecheck/prawn_continued/badges/gpa.svg)](https://codeclimate.com/github/tablecheck/prawn_continued)
 ![Maintained: yes](https://img.shields.io/badge/maintained-yes-brightgreen.svg)
 
 Prawn is a pure Ruby PDF generation library that provides a lot of great
@@ -62,7 +62,7 @@ too invasive.
 ## Installing Prawn
 
 Prawn is distributed via RubyGems, and can be installed the usual way that you
-install gems: by simply typing `gem install prawn-continued` on the command line.
+install gems: by simply typing `gem install prawn_continued` on the command line.
 
 You can also install from git if you'd like, the _master_ branch contains the
 latest developments, and _stable_ represents the latest bug fixes to the
@@ -109,7 +109,7 @@ guidelines. Generally speaking, you can expect tiny and minor version updates to
 always be safe upgrades, but major updates can introduce incompatibilities.
 
 Be sure to read the release notes in
-[CHANGELOG.md](https://github.com/tablecheck/prawn-continued/blob/master/CHANGELOG.md) each
+[CHANGELOG.md](https://github.com/tablecheck/prawn_continued/blob/master/CHANGELOG.md) each
 time we cut a new release, and lock your gems accordingly.
 
 ## Support
@@ -137,7 +137,7 @@ by the core team.
 ## Contributing
 
 If you've found a bug or want to submit a patch, please enter a ticket into our
-[GitHub tracker](http://github.com/tablecheck/prawn-continued/issues).
+[GitHub tracker](http://github.com/tablecheck/prawn_continued/issues).
 
 We strongly encourage bug reports to come with failing tests or at least a
 reduced example that demonstrates the problem. Similarly, patches should include
@@ -212,7 +212,7 @@ work to focus on this project.
 Over the last several years, we've received code contributions from dozens of
 people, which is amazing considering the low-level nature of this project. You
 can find the full list of folks who have at least one patch accepted to Prawn on
-GitHub [Contributors](https://github.com/tablecheck/prawn-continued/contributors) page.
+GitHub [Contributors](https://github.com/tablecheck/prawn_continued/contributors) page.
 
 After a long period of inactivity, Prawn reached its 1.0 milestone in 2014
 thanks to some modest funding provided to Gregory by Madriska, Inc. (Brad

@@ -5,4 +5,4 @@ It is our understanding that all files in this folder are compatible
 with our licensing, but if you notice any problems, please
 file an issue in our tracker on Github and we will promptly address it:
 
-https://github.com/tablecheck/prawn-continued/issues
+https://github.com/tablecheck/prawn_continued/issues
