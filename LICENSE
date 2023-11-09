@@ -7,23 +7,8 @@ Prawn may be used under any of the following licenses:
 
 The maintainers of this repository plan to migrate to the MIT License
 (see: LICENSE-MIT) in the future. Effective November 8, 2023, by
-contributing to this repository, you consent to license under the MIT License
-your contribution together with any other contributions to this repository,
-its forks, and other repositories in the "prawnpdf" GitHub organization,
-in addition to the existing license(s). This includes without limitation:
-
-* https://github.com/tablecheck/prawn-continued
-* https://github.com/tablecheck/prawn-table-continued
-* https://github.com/prawnpdf/prawn
-* https://github.com/prawnpdf/prawn-component
-* https://github.com/prawnpdf/prawn-templates
-* https://github.com/prawnpdf/prawn-table
-* https://github.com/prawnpdf/prawn-dev
-* https://github.com/prawnpdf/prawn-manual_builder
-* https://github.com/prawnpdf/pdf-core
-* https://github.com/prawnpdf/pdf-inspector
-* https://github.com/prawnpdf/ttfunk
-* https://github.com/prawnpdf/demo
+contributing to this repository, you consent to license your contribution
+under the MIT License.
 
 For clarity, the MIT License has not yet been adopted for use in this
 repository. Refer to the following issue for migration status:
