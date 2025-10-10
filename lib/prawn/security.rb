@@ -1,11 +1,5 @@
 # frozen_string_literal: true
 
-# encryption.rb : Implements encrypted PDF and access permissions.
-#
-# Copyright August 2008, Brad Ediger. All Rights Reserved.
-#
-# This is free software. Please see the LICENSE and COPYING files for details.
-
 require 'digest/md5'
 
 require_relative 'security/arcfour'
@@ -18,76 +12,71 @@ module Prawn
       # @group Experimental API
 
       # Encrypts the document, to protect confidential data or control
-      # modifications to the document. The encryption algorithm used is
-      # detailed in the PDF Reference 1.3, section 3.5 "Encryption", and it is
+      # modifications to the document. The encryption algorithm used is detailed
+      # in the PDF Reference 1.3, section 3.5 "Encryption", and it is
       # implemented by all major PDF readers.
       #
-      # +options+ can contain the following:
-      #
-      # <tt>:user_password</tt>:: Password required to open the document. If
-      #                           this is omitted or empty, no password will be
-      #                           required. The document will still be
-      #                           encrypted, but anyone can read it.
-      #
-      # <tt>:owner_password</tt>:: Password required to make modifications to
-      #                            the document or change or override its
-      #                            permissions. If this is set to
-      #                            <tt>:random</tt>, a random password will be
-      #                            used; this can be useful if you never want
-      #                            users to be able to override the document
-      #                            permissions.
-      #
-      # <tt>:permissions</tt>:: A hash mapping permission symbols (see below) to
-      #                         <tt>true</tt> or <tt>false</tt>. True means
-      #                         "permitted", and false means "not permitted".
-      #                         All permissions default to <tt>true</tt>.
-      #
-      # The following permissions can be specified:
-      #
-      # <tt>:print_document</tt>:: Print document.
-      #
-      # <tt>:modify_contents</tt>:: Modify contents of document (other than text
-      #                             annotations and interactive form fields).
-      #
-      # <tt>:copy_contents</tt>:: Copy text and graphics from document.
-      #
-      # <tt>:modify_annotations</tt>:: Add or modify text annotations and
-      #                                interactive form fields.
-      #
-      # == Examples
+      # #### Examples
       #
       # Deny printing to everyone, but allow anyone to open without a password:
       #
-      #   encrypt_document :permissions => { :print_document => false },
-      #                    :owner_password => :random
+      # ```ruby
+      # encrypt_document permissions: { print_document: false },
+      #   owner_password: :random
+      # ```
       #
       # Set a user and owner password on the document, with full permissions for
       # both the user and the owner:
       #
-      #   encrypt_document :user_password => 'foo', :owner_password => 'bar'
+      # ```ruby
+      # encrypt_document user_password: 'foo', owner_password: 'bar'
+      # ```
       #
       # Set no passwords, grant all permissions (This is useful because the
       # default in some readers, if no permissions are specified, is "deny"):
       #
-      #   encrypt_document
+      # ```ruby
+      # encrypt_document
+      # ```
       #
-      # == Caveats
+      # #### Caveats
       #
       # * The encryption used is weak; the key is password-derived and is
       #   limited to 40 bits, due to US export controls in effect at the time
       #   the PDF standard was written.
-      #
       # * There is nothing technologically requiring PDF readers to respect the
       #   permissions embedded in a document. Many PDF readers do not.
-      #
-      # * In short, you have <b>no security at all</b> against a moderately
+      # * In short, you have **no security at all** against a moderately
       #   motivated person. Don't use this for anything super-serious. This is
       #   not a limitation of Prawn, but is rather a built-in limitation of the
       #   PDF format.
       #
+      # @param options [Hash{Symbol => any}]
+      # @option options :user_password [String]
+      #   Password required to open the document. If this is omitted or empty,
+      #   no password will be required. The document will still be encrypted,
+      #   but anyone can read it.
+      # @option options :owner_password [String, :random]
+      #   Password required to make modifications to the document or change or
+      #   override its permissions. If this is set to `:random`, a random
+      #   password will be used; this can be useful if you never want users to
+      #   be able to override the document permissions.
+      # @option options :permissions [Hash{Symbol => Boolean}]
+      #   A hash mapping permission symbols (see below) to `true` or `false`.
+      #   `true` means "permitted", and `false` means "not permitted". All
+      #   permissions default to `true`.
+      #
+      #   The following permissions can be specified:
+      #
+      #   - `:print_document` -- Print document.
+      #   - `:modify_contents` -- Modify contents of document (other than text
+      #     annotations and interactive form fields).
+      #   - `:copy_contents` -- Copy text and graphics from document.
+      #   - `:modify_annotations` -- Add or modify text annotations and
+      #     interactive form fields.
+      # @return [void]
       def encrypt_document(options = {})
-        Prawn.verify_options %i[user_password owner_password permissions],
-          options
+        Prawn.verify_options(%i[user_password owner_password permissions], options)
         @user_password = options.delete(:user_password) || ''
 
         @owner_password = options.delete(:owner_password) || @user_password
@@ -104,9 +93,16 @@ module Prawn
         state.encryption_key = user_encryption_key
       end
 
-      # Encrypts the given string under the given key, also requiring the
-      # object ID and generation number of the reference.
+      # Encrypts the given string under the given key, also requiring the object
+      # ID and generation number of the reference.
+      #
       # See Algorithm 3.1.
+      #
+      # @param str [String]
+      # @param key [String]
+      # @param id [Integer]
+      # @param gen [Integer]
+      # @return [String]
       def self.encrypt_string(str, key, id, gen)
         # Convert ID and Gen number into little-endian truncated byte strings
         id = [id].pack('V')[0, 3]
@@ -128,7 +124,7 @@ module Prawn
           R: 2, # Revision 2 of the algorithm
           O: PDF::Core::ByteString.new(owner_password_hash),
           U: PDF::Core::ByteString.new(user_password_hash),
-          P: permissions_value
+          P: permissions_value,
         }
       end
 
@@ -137,7 +133,7 @@ module Prawn
         print_document: 3,
         modify_contents: 4,
         copy_contents: 5,
-        modify_annotations: 6
+        modify_annotations: 6,
       }.freeze
       private_constant :PERMISSIONS_BITS
 
@@ -151,7 +147,7 @@ module Prawn
             raise(
               ArgumentError,
               "Unknown permission :#{key}. Valid options: " +
-                PERMISSIONS_BITS.keys.map(&:inspect).join(', ')
+                PERMISSIONS_BITS.keys.map(&:inspect).join(', '),
             )
           end
 
@@ -210,7 +206,7 @@ end
 
 # @private
 module PDF
-  module Core
+  module Core # rubocop: disable Style/Documentation
     module_function
 
     # Like pdf_object, but returns an encrypted result if required.
@@ -221,38 +217,38 @@ module PDF
     def encrypted_pdf_object(obj, key, id, gen, in_content_stream = false)
       case obj
       when Array
-        array_content = obj.map do |e|
+        array_content = obj.map { |e|
           encrypted_pdf_object(e, key, id, gen, in_content_stream)
-        end.join(' ')
+        }.join(' ')
         "[#{array_content}]"
       when LiteralString
         obj =
           ByteString.new(
-            Prawn::Document::Security.encrypt_string(obj, key, id, gen)
-          ).gsub(/[\\\r()]/) { |m| "\\#{m}" }
+            Prawn::Document::Security.encrypt_string(obj, key, id, gen),
+          ).gsub(/[\\\r()]/, STRING_ESCAPE_MAP)
         "(#{obj})"
       when Time
         obj = "#{obj.strftime('D:%Y%m%d%H%M%S%z').chop.chop}'00'"
         obj =
           ByteString.new(
-            Prawn::Document::Security.encrypt_string(obj, key, id, gen)
-          ).gsub(/[\\\r()]/) { |m| "\\#{m}" }
+            Prawn::Document::Security.encrypt_string(obj, key, id, gen),
+          ).gsub(/[\\\r()]/, STRING_ESCAPE_MAP)
         "(#{obj})"
       when String
         pdf_object(
           ByteString.new(
-            Prawn::Document::Security.encrypt_string(obj, key, id, gen)
+            Prawn::Document::Security.encrypt_string(obj, key, id, gen),
           ),
-          in_content_stream
+          in_content_stream,
         )
       when ::Hash
-        hash_content = obj.map do |k, v|
+        hash_content = obj.map { |k, v|
           unless k.is_a?(String) || k.is_a?(Symbol)
             raise PDF::Core::Errors::FailedObjectConversion,
               'A PDF Dictionary must be keyed by names'
           end
           "#{pdf_object(k.to_sym, in_content_stream)} #{encrypted_pdf_object(v, key, id, gen, in_content_stream)}\n"
-        end.join('')
+        }.join('')
         "<< #{hash_content}>>"
       when NameTree::Value
         "#{pdf_object(obj.name)} #{encrypted_pdf_object(obj.value, key, id, gen, in_content_stream)}"
@@ -265,11 +261,17 @@ module PDF
 
     # @private
     class Stream
+      # Encrypt stream.
+      #
+      # @param key [String]
+      # @param id [Integer]
+      # @param gen [Integer]
+      # @return [String]
       def encrypted_object(key, id, gen)
         if filtered_stream
           "stream\n#{
             Prawn::Document::Security.encrypt_string(
-              filtered_stream, key, id, gen
+              filtered_stream, key, id, gen,
             )
           }\nendstream\n"
         else
@@ -281,7 +283,10 @@ module PDF
     # @private
     class Reference
       # Returns the object definition for the object this references, keyed from
-      # +key+.
+      # `key`.
+      #
+      # @param key [String]
+      # @return [String]
       def encrypted_object(key)
         @on_encode&.call(self)
 
@@ -291,7 +296,7 @@ module PDF
             PDF::Core.encrypted_pdf_object(data, key, @identifier, gen) << "\n"
         else
           output << PDF::Core.encrypted_pdf_object(
-            data.merge(@stream.data), key, @identifier, gen
+            data.merge(@stream.data), key, @identifier, gen,
           ) << "\n" <<
             @stream.encrypted_object(key, @identifier, gen)
         end

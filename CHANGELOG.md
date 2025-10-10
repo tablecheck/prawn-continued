@@ -16,11 +16,34 @@ Your contribution here
 
 * Rename gem to `prawn-continued`.
 
+## PrawnPDF 2.5.0
+
+### Full font embedding
+
+Fonts can be embedded in their original form without subsetting or any other
+modification.
+
+(Alexander Mankuta, [#1322](https://github.com/prawnpdf/prawn/pull/1322))
+
+## Fixed keyword arguments in Prawn::View
+
+(Kim Burgestrand, [1284](https://github.com/prawnpdf/prawn/pull/1284))
+
 ### Look for glyph in correct font
 
 Take the font style into account when looking for a glyph and fallback fonts are enabled.
 
 (Dan Allen, [#1147](https://github.com/prawnpdf/prawn/issues/1147))
+
+### Fixed font caching
+
+It's a subtle bug that could result in use of incorrect fonts.
+
+(maerch, [#924](https://github.com/prawnpdf/prawn/pull/924), Alexander Mankuta)
+
+### Fixed line spacing in text boxes with indentation
+
+(Jakub Stasiak, [#1079](https://github.com/prawnpdf/prawn/pull/1079))
 
 ## PrawnPDF 2.4.0
 

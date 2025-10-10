@@ -1,31 +1,30 @@
 # frozen_string_literal: true
 
-# core/text/formatted/arranger.rb : Implements a data structure for 2-stage
-#                                   processing of lines of formatted text
-#
-# Copyright February 2010, Daniel Nelson. All Rights Reserved.
-#
-# This is free software. Please see the LICENSE and COPYING files for details.
-
 module Prawn
   module Text
-    module Formatted # :nodoc:
+    module Formatted
+      # D data structure for 2-stage processing of lines of formatted text.
       # @private
-
-      class Arranger # :nodoc:
+      class Arranger
+        # You're getting this because you're trying to get some information from
+        # the arranger before it finished processing text.
         class NotFinalized < StandardError
+          # @private
           DEFAULT_MESSAGE = 'Lines must be finalized'
+
+          # @private
           MESSAGE_WITH_METHOD = 'Lines must be finalized before calling #%<method>s'
 
           def initialize(message = DEFAULT_MESSAGE, method: nil)
             if method && message == DEFAULT_MESSAGE
-              super format(MESSAGE_WITH_METHOD, method: method)
+              super(format(MESSAGE_WITH_METHOD, method: method))
             else
-              super message
+              super(message)
             end
           end
         end
 
+        # You're getting this because a font doesn't have a family name.
         class BadFontFamily < StandardError
           def initialize(message = 'Bad font family')
             super
@@ -50,6 +49,10 @@ module Prawn
           @kerning = options[:kerning]
         end
 
+        # Number of spaces in the text.
+        #
+        # @return [Integer]
+        # @raise [NotFinalized]
         def space_count
           unless finalized
             raise NotFinalized.new(method: 'space_count')
@@ -60,6 +63,10 @@ module Prawn
           end
         end
 
+        # Line width.
+        #
+        # @return [Number]
+        # @raise [NotFinalized]
         def line_width
           unless finalized
             raise raise NotFinalized.new(method: 'line_width')
@@ -70,19 +77,27 @@ module Prawn
           end
         end
 
+        # Line text.
+        #
+        # @return [String]
+        # @raise [NotFinalized]
         def line
           unless finalized
             raise NotFinalized.new(method: 'line')
           end
 
-          @fragments.map do |fragment|
-            fragment.text.dup.encode(::Encoding::UTF_8)
-          rescue ::Encoding::InvalidByteSequenceError,
-                 ::Encoding::UndefinedConversionError
-            fragment.text.dup.force_encoding(::Encoding::UTF_8)
-          end.join
+          @fragments.map { |fragment|
+            begin
+              fragment.text.dup.encode(::Encoding::UTF_8)
+            rescue ::Encoding::InvalidByteSequenceError, ::Encoding::UndefinedConversionError
+              fragment.text.dup.force_encoding(::Encoding::UTF_8)
+            end
+          }.join
         end
 
+        # Finish laying out current line.
+        #
+        # @return [void]
         def finalize_line
           @finalized = true
 
@@ -95,7 +110,7 @@ module Prawn
             fragment = Prawn::Text::Formatted::Fragment.new(
               text,
               format_state,
-              @document
+              @document,
             )
             @fragments << fragment
             self.fragment_measurements = fragment
@@ -103,6 +118,10 @@ module Prawn
           end
         end
 
+        # Set new fragment array.
+        #
+        # @param array [Array<Hash>]
+        # @return [void]
         def format_array=(array)
           initialize_line
           @unconsumed = []
@@ -113,6 +132,9 @@ module Prawn
           end
         end
 
+        # Prepare for new line layout.
+        #
+        # @return [void]
         def initialize_line
           @finalized = false
           @max_line_height = 0
@@ -123,10 +145,17 @@ module Prawn
           @fragments = []
         end
 
+        # Were all fragments processed?
+        #
+        # @return [Boolean]
         def finished?
           @unconsumed.empty?
         end
 
+        # Get the next unprocessed string.
+        #
+        # @return [String, nil]
+        # @raise [NotFinalized]
         def next_string
           if finalized
             raise NotFinalized.new(method: 'next_string')
@@ -143,6 +172,9 @@ module Prawn
           end
         end
 
+        # Get the next unprocessed string keeping it in the queue.
+        #
+        # @return [String, nil]
         def preview_next_string
           next_unconsumed_hash = @unconsumed.first
 
@@ -151,6 +183,11 @@ module Prawn
           end
         end
 
+        # Apply color and font settings.
+        #
+        # @param fragment [Prawn::Text::Formatted::Fragment]
+        # @yield
+        # @return [void]
         def apply_color_and_font_settings(fragment, &block)
           if fragment.color
             original_fill_color = @document.fill_color
@@ -165,6 +202,11 @@ module Prawn
           end
         end
 
+        # Apply font settings.
+        #
+        # @param fragment [Prawn::Text::Formatted::Fragment]
+        # @yield
+        # @return [void]
         def apply_font_settings(fragment = nil, &block)
           if fragment.nil?
             font = current_format_state[:font]
@@ -185,7 +227,7 @@ module Prawn
               raise BadFontFamily unless @document.font.family
 
               @document.font(
-                font || @document.font.family, style: font_style
+                font || @document.font.family, style: font_style,
               ) do
                 apply_font_size(size, styles, &block)
               end
@@ -195,6 +237,12 @@ module Prawn
           end
         end
 
+        # Update last fragment's text.
+        #
+        # @param printed [String]
+        # @param unprinted [String]
+        # @param normalized_soft_hyphen [Boolean]
+        # @return [void]
         def update_last_string(printed, unprinted, normalized_soft_hyphen = nil)
           return if printed.nil?
 
@@ -214,6 +262,10 @@ module Prawn
           load_previous_format_state if printed.empty?
         end
 
+        # Get the next fragment.
+        #
+        # @return [Prawn::Text::Formatted::Fragment]
+        # @raise [NotFinalized]
         def retrieve_fragment
           unless finalized
             raise NotFinalized, 'Lines must be finalized before fragments can be retrieved'
@@ -222,6 +274,9 @@ module Prawn
           @fragments.shift
         end
 
+        # Repack remaining fragments.
+        #
+        # @return [void]
         def repack_unretrieved
           new_unconsumed = []
           # rubocop: disable Lint/AssignmentInCondition
@@ -233,6 +288,10 @@ module Prawn
           @unconsumed = new_unconsumed.concat(@unconsumed)
         end
 
+        # Get font variant from fragment styles.
+        #
+        # @param styles [Array<Symbol>]
+        # @return [Symbol]
         def font_style(styles)
           styles = Array(styles)
           if styles.include?(:bold) && styles.include?(:italic)
@@ -309,7 +368,7 @@ module Prawn
           apply_font_settings(fragment) do
             fragment.width = @document.width_of(
               fragment.text,
-              kerning: @kerning
+              kerning: @kerning,
             )
             fragment.line_height = @document.font.height
             fragment.descender = @document.font.descender
@@ -320,15 +379,15 @@ module Prawn
         def line_measurement_maximums=(fragment)
           @max_line_height = [
             defined?(@max_line_height) && @max_line_height,
-            fragment.line_height
+            fragment.line_height,
           ].compact.max
           @max_descender = [
             defined?(@max_descender) && @max_descender,
-            fragment.descender
+            fragment.descender,
           ].compact.max
           @max_ascender = [
             defined?(@max_ascender) && @max_ascender,
-            fragment.ascender
+            fragment.ascender,
           ].compact.max
         end
       end

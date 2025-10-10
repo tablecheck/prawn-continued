@@ -1,65 +1,41 @@
 # frozen_string_literal: true
 
-# transparency.rb : Implements transparency
-#
-# Copyright October 2009, Daniel Nelson. All Rights Reserved.
-#
-# This is free software. Please see the LICENSE and COPYING files for details.
-#
-
 module Prawn
   module Graphics
-    # The Prawn::Transparency module is used to place transparent
-    # content on the page. It has the capacity for separate
-    # transparency values for stroked content and all other content.
-    #
-    # Example:
-    #   # both the fill and stroke will be at 50% opacity
-    #   pdf.transparent(0.5) do
-    #     pdf.text("hello world")
-    #     pdf.fill_and_stroke_circle([x, y], 25)
-    #   end
-    #
-    #   # the fill will be at 50% opacity, but the stroke will
-    #   # be at 75% opacity
-    #   pdf.transparent(0.5, 0.75) do
-    #     pdf.text("hello world")
-    #     pdf.fill_and_stroke_circle([x, y], 25)
-    #   end
-    #
+    # This module is used to place transparent content on the page. It has the
+    # capacity for separate transparency values for stroked content and all
+    # other content.
     module Transparency
       # @group Stable API
 
-      # Sets the <tt>opacity</tt> and <tt>stroke_opacity</tt> for all
-      # the content within the <tt>block</tt>
-      # If <tt>stroke_opacity</tt> is not provided, then it takes on
-      # the same value as <tt>opacity</tt>
+      # Set opacity.
       #
-      # Valid ranges for both paramters are 0.0 to 1.0
-      #
-      # Example:
-      #   # both the fill and stroke will be at 50% opacity
+      # @example Both the fill and stroke will be at 50% opacity.
       #   pdf.transparent(0.5) do
       #     pdf.text("hello world")
       #     pdf.fill_and_stroke_circle([x, y], 25)
       #   end
       #
-      #   # the fill will be at 50% opacity, but the stroke will
-      #   # be at 75% opacity
+      # @example The fill will be at 50% opacity, but the stroke will be at 75% opacity.
       #   pdf.transparent(0.5, 0.75) do
       #     pdf.text("hello world")
       #     pdf.fill_and_stroke_circle([x, y], 25)
       #   end
       #
+      # @param opacity [Number] Fill opacity. Clipped to the 0.0 to 1.0 range.
+      # @param stroke_opacity [Number] Stroke opacity. Clipped to the
+      #   0.0 to 1.0 range.
+      # @yield
+      # @return [void]
       def transparent(opacity, stroke_opacity = opacity)
         renderer.min_version(1.4)
 
-        opacity = [[opacity, 0.0].max, 1.0].min
-        stroke_opacity = [[stroke_opacity, 0.0].max, 1.0].min
+        opacity = opacity.clamp(0.0, 1.0)
+        stroke_opacity = stroke_opacity.clamp(0.0, 1.0)
 
         save_graphics_state
         renderer.add_content(
-          "/#{opacity_dictionary_name(opacity, stroke_opacity)} gs"
+          "/#{opacity_dictionary_name(opacity, stroke_opacity)} gs",
         )
         yield
         restore_graphics_state
@@ -85,13 +61,13 @@ module Prawn
           dictionary = ref!(
             Type: :ExtGState,
             CA: stroke_opacity,
-            ca: opacity
+            ca: opacity,
           )
 
           dictionary_name = "Tr#{next_opacity_dictionary_id}"
           opacity_dictionary_registry[key] = {
             name: dictionary_name,
-            obj: dictionary
+            obj: dictionary,
           }
         end
 

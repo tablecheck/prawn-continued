@@ -1,25 +1,20 @@
 # frozen_string_literal: true
 
-# wrap.rb: Handles text wrapping for for formatted text
-#
-# Contributed by Daniel Nelson
-#
-# This is free software. Please see the LICENSE and COPYING files for details.
-
 require_relative 'line_wrap'
 require_relative 'arranger'
 
 module Prawn
   module Text
-    module Formatted # :nodoc:
+    module Formatted
+      # Handles text wrapping for for formatted text.
+      #
       # @private
-
-      module Wrap # :nodoc:
+      module Wrap
         def initialize(_array, options)
           @line_wrap = Prawn::Text::Formatted::LineWrap.new
           @arranger = Prawn::Text::Formatted::Arranger.new(
             @document,
-            kerning: options[:kerning]
+            kerning: options[:kerning],
           )
           @disable_wrap_by_char = options[:disable_wrap_by_char]
         end
@@ -44,7 +39,7 @@ module Prawn
         #
         # Returns any formatted text that was not printed
         #
-        def wrap(array) # :nodoc:
+        def wrap(array)
           initialize_wrap(array)
 
           stop = false
@@ -57,7 +52,7 @@ module Prawn
               kerning: @kerning,
               width: available_width,
               arranger: @arranger,
-              disable_wrap_by_char: @disable_wrap_by_char
+              disable_wrap_by_char: @disable_wrap_by_char,
             )
 
             if enough_height_for_this_line?
@@ -91,7 +86,7 @@ module Prawn
             printed_fragments << fragment.text
             fragments_this_line << fragment
           end
-          @arranger.fragments.replace []
+          @arranger.fragments.replace([])
 
           accumulated_width = 0
           fragments_this_line.reverse! if @direction == :rtl
@@ -101,14 +96,14 @@ module Prawn
               fragment_this_line,
               accumulated_width,
               @line_wrap.width,
-              word_spacing
+              word_spacing,
             )
             accumulated_width += fragment_this_line.width
           end
 
-          @printed_lines << printed_fragments.map do |s|
+          @printed_lines << printed_fragments.map { |s|
             s.dup.force_encoding(::Encoding::UTF_8)
-          end.join
+          }.join
         end
 
         def word_spacing_for_this_line
@@ -161,7 +156,7 @@ module Prawn
               fragment,
               accumulated_width,
               line_width,
-              word_spacing
+              word_spacing,
             )
           end
         end

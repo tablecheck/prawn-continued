@@ -9,45 +9,138 @@
 
 require 'ttfunk'
 require 'ttfunk/subset_collection'
+require_relative 'to_unicode_cmap'
 
 module Prawn
   module Fonts
-    # @private
+    # TrueType font.
+    #
+    # @note You shouldn't use this class directly.
     class TTF < Font
+      # TrueType font error.
       class Error < StandardError
+        # @private
         DEFAULT_MESSAGE = 'TTF font error'
+
+        # @private
         MESSAGE_WITH_FONT = 'TTF font error in font %<font>s'
 
         def initialize(message = DEFAULT_MESSAGE, font: nil)
           if font && message == DEFAULT_MESSAGE
-            super format(MESSAGE_WITH_FONT, font: font)
+            super(format(MESSAGE_WITH_FONT, font: font))
           else
-            super message
+            super(message)
           end
         end
       end
 
+      # Signals absence of a Unicode character map in the font.
       class NoUnicodeCMap < Error
+        # @private
         DEFAULT_MESSAGE = 'No unicode cmap found in font'
+
+        # @private
         MESSAGE_WITH_FONT = 'No unicode cmap found in font %<font>s'
       end
 
+      # Signals absense of a PostScript font name.
       class NoPostscriptName < Error
+        # @private
         DEFAULT_MESSAGE = 'Can not detect a postscript name'
+
+        # @private
         MESSAGE_WITH_FONT = 'Can not detect a postscript name in font %<font>s'
       end
 
-      attr_reader :ttf, :subsets
+      # TTFunk font.
+      # @return [TTFunk::File]
+      attr_reader :ttf
+      attr_reader :subsets
 
+      # Does this font support Unicode?
+      #
+      # @return [true]
       def unicode?
         true
       end
 
+      # An adapter for subset collection to represent a full font.
+      #
+      # @private
+      class FullFontSubsetsCollection
+        FULL_FONT = Object.new.tap do |obj|
+          obj.singleton_class.define_method(:inspect) do
+            super().insert(-2, ' FULL_FONT')
+          end
+        end.freeze
+
+        def initialize(original)
+          @original = original
+
+          (@cmap ||= original.cmap.unicode.first) || raise(NoUnicodeCMap.new(font: name))
+
+          @code_space_size =
+            case cmap.code_map.keys.max
+            when 0..0xff then 1
+            when 0x100..0xffff then 2
+            when 0x10000..0xffffff then 3
+            else
+              4
+            end
+
+          # Codespaces are not sequentional, they're ranges in
+          # a multi-dimentional space. Each byte is considered separately. So we
+          # have to maximally extend the lower two bytes in order to allow for
+          # continuos Unicode mapping.
+          # We only keep the highest byte because Unicode only goes to 1FFFFF
+          # and fonts usually cover even less of the space. We don't want to
+          # list all those unmapped charac codes here.
+          @code_space_max = cmap.code_map.keys.max | ('ff' * (code_space_size - 1)).to_i(16)
+        end
+
+        # Encode characters.
+        #
+        # @return [Array<Array(FULL_FONT, String)>]
+        def encode(characters)
+          [
+            [
+              FULL_FONT,
+              characters.map { |c|
+                check_bounds!(c)
+                [cmap[c]].pack('n')
+              }.join(''),
+            ],
+          ]
+        end
+
+        private
+
+        attr_reader :cmap
+        attr_reader :code_space_size
+        attr_reader :code_space_max
+
+        def check_bounds!(num)
+          if num > code_space_max
+            raise Error, "CID (#{num}) exceedes code space size"
+          end
+        end
+      end
+
+      # @param document [Prawn::Document]
+      # @param name [String] font file path
+      # @param options [Hash]
+      # @option options :family [String]
+      # @option options :style [Symbol]
       def initialize(document, name, options = {})
         super
 
         @ttf = read_ttf_file
-        @subsets = TTFunk::SubsetCollection.new(@ttf)
+        @subsets =
+          if full_font_embedding
+            FullFontSubsetsCollection.new(@ttf)
+          else
+            TTFunk::SubsetCollection.new(@ttf)
+          end
         @italic_angle = nil
 
         @attributes = {}
@@ -60,46 +153,54 @@ module Prawn
         @line_gap = Integer(@ttf.line_gap * scale_factor)
       end
 
-      # NOTE: +string+ must be UTF8-encoded.
-      def compute_width_of(string, options = {}) # :nodoc:
+      # Compute width of a string at the specified size, optionally with kerning
+      # applied.
+      #
+      # @param string [String] *must* be encoded as UTF-8
+      # @param options [Hash{Symbol => any}]
+      # @option options :size [Number]
+      # @option options :kerning [Boolean] (false)
+      # @return [Number]
+      def compute_width_of(string, options = {})
         scale = (options[:size] || size) / 1000.0
         if options[:kerning]
-          kern(string).reduce(0) do |s, r|
+          kern(string).reduce(0) { |s, r|
             if r.is_a?(Numeric)
               s - r
             else
               r.reduce(s) { |a, e| a + character_width_by_code(e) }
             end
-          end * scale
+          } * scale
         else
-          string.codepoints.reduce(0) do |s, r|
+          string.codepoints.reduce(0) { |s, r|
             s + character_width_by_code(r)
-          end * scale
+          } * scale
         end
       end
 
-      # The font bbox, as an array of integers
+      # The font bbox.
       #
+      # @return [Array(Number, Number, Number, Number)]
       def bbox
         @bbox ||= @ttf.bbox.map { |i| Integer(i * scale_factor) }
       end
 
-      # Returns true if the font has kerning data, false otherwise
+      # Does this font contain kerning data.
       #
-      # rubocop: disable Naming/PredicateName
-      def has_kerning_data?
+      # @return [Boolean]
+      def has_kerning_data? # rubocop: disable Naming/PredicateName
         @has_kerning_data
       end
-      # rubocop: enable Naming/PredicateName
 
-      # Perform any changes to the string that need to happen
-      # before it is rendered to the canvas. Returns an array of
-      # subset "chunks", where the even-numbered indices are the
-      # font subset number, and the following entry element is
-      # either a string or an array (for kerned text).
+      # Perform any changes to the string that need to happen before it is
+      # rendered to the canvas. Returns an array of subset "chunks", where the
+      # even-numbered indices are the font subset number, and the following
+      # entry element is either a string or an array (for kerned text).
       #
-      # The +text+ parameter must be UTF8-encoded.
-      #
+      # @param text [String] must be in UTF-8 encoding
+      # @param options [Hash{Symbol => any}]
+      # @option options :kerning [Boolean]
+      # @return [Array<Array(0, (String, Array)>]
       def encode_text(text, options = {})
         text = text.chomp
 
@@ -133,15 +234,23 @@ module Prawn
         end
       end
 
+      # Base name of the font.
+      #
+      # @return [String]
       def basename
         @basename ||= @ttf.name.postscript_name
       end
 
-      # not sure how to compute this for true-type fonts...
+      # @devnote not sure how to compute this for true-type fonts...
+      #
+      # @private
+      # @return [Number]
       def stem_v
         0
       end
 
+      # @private
+      # @return [Number]
       def italic_angle
         return @italic_angle if @italic_angle
 
@@ -150,7 +259,7 @@ module Prawn
           hi = raw >> 16
           low = raw & 0xFF
           hi = -((hi ^ 0xFFFF) + 1) if hi & 0x8000 != 0
-          @italic_angle = "#{hi}.#{low}".to_f
+          @italic_angle = Float("#{hi}.#{low}")
         else
           @italic_angle = 0
         end
@@ -158,32 +267,44 @@ module Prawn
         @italic_angle
       end
 
+      # @private
+      # @return [Number]
       def cap_height
         @cap_height ||=
           begin
-            height = @ttf.os2.exists? && @ttf.os2.cap_height || 0
+            height = (@ttf.os2.exists? && @ttf.os2.cap_height) || 0
             height.zero? ? @ascender : height
           end
       end
 
+      # @private
+      # @return [number]
       def x_height
         # FIXME: seems like if os2 table doesn't exist, we could
         # just find the height of the lower-case 'x' glyph?
-        @ttf.os2.exists? && @ttf.os2.x_height || 0
+        (@ttf.os2.exists? && @ttf.os2.x_height) || 0
       end
 
+      # @private
+      # @return [Number]
       def family_class
-        @family_class ||= (@ttf.os2.exists? && @ttf.os2.family_class || 0) >> 8
+        @family_class ||= ((@ttf.os2.exists? && @ttf.os2.family_class) || 0) >> 8
       end
 
+      # @private
+      # @return [Boolean]
       def serif?
         @serif ||= [1, 2, 3, 4, 5, 7].include?(family_class)
       end
 
+      # @private
+      # @return [Boolean]
       def script?
         @script ||= family_class == 10
       end
 
+      # @private
+      # @return [Integer]
       def pdf_flags
         @pdf_flags ||=
           begin
@@ -197,27 +318,39 @@ module Prawn
           end
       end
 
+      # Normlize text to a compatible encoding.
+      #
+      # @param text [String]
+      # @return [String]
       def normalize_encoding(text)
         text.encode(::Encoding::UTF_8)
-      rescue StandardError => e
-        puts e
+      rescue StandardError
         raise Prawn::Errors::IncompatibleStringEncoding,
           "Encoding #{text.encoding} can not be transparently converted to UTF-8. " \
-          'Please ensure the encoding of the string you are attempting ' \
-          'to use is set correctly'
+            'Please ensure the encoding of the string you are attempting to use is set correctly'
       end
 
+      # Encode text to UTF-8.
+      #
+      # @param text [String]
+      # @return [String]
       def to_utf8(text)
         text.encode('UTF-8')
       end
 
+      # Does this font has a glyph for the character?
+      #
+      # @param char [String]
+      # @return [Boolean]
       def glyph_present?(char)
         code = char.codepoints.first
         cmap[code].positive?
       end
 
-      # Returns the number of characters in +str+ (a UTF-8-encoded string).
+      # Returns the number of characters in `str` (a UTF-8-encoded string).
       #
+      # @param str [String]
+      # @return [Integer]
       def character_count(str)
         str.length
       end
@@ -289,12 +422,26 @@ module Prawn
       end
 
       def embed(reference, subset)
-        font_content = @subsets[subset].encode
+        if full_font_embedding
+          embed_full_font(reference)
+        else
+          embed_subset(reference, subset)
+        end
+      end
 
-        # FIXME: we need postscript_name and glyph widths from the font
-        # subset. Perhaps this could be done by querying the subset,
-        # rather than by parsing the font that the subset produces?
-        font = TTFunk::File.new(font_content)
+      def embed_subset(reference, subset)
+        font = TTFunk::File.new(@subsets[subset].encode)
+        unicode_mapping = @subsets[subset].to_unicode_map
+        embed_simple_font(reference, font, unicode_mapping)
+      end
+
+      def embed_simple_font(reference, font, unicode_mapping)
+        if font_type(font) == :unknown
+          raise Error, %(Simple font embedding is not uspported for font "#{font.name}.")
+        end
+
+        true_type = font_type(font) == :true_type
+        open_type = font_type(font) == :open_type
 
         # empirically, it looks like Adobe Reader will not display fonts
         # if their font name is more than 33 bytes long. Strange. But true.
@@ -302,14 +449,14 @@ module Prawn
 
         raise NoPostscriptName.new(font: font) if basename.nil?
 
-        fontfile = @document.ref!(Length1: font_content.size)
-        fontfile.stream << font_content
-        fontfile.stream.compress!
+        fontfile = @document.ref!({})
+        fontfile.data[:Length1] = font.contents.size
+        fontfile.stream << font.contents.string
+        fontfile.stream.compress! if @document.compression_enabled?
 
         descriptor = @document.ref!(
           Type: :FontDescriptor,
           FontName: basename.to_sym,
-          FontFile2: fontfile,
           FontBBox: bbox,
           Flags: pdf_flags,
           StemV: stem_v,
@@ -317,13 +464,23 @@ module Prawn
           Ascent: @ascender,
           Descent: @descender,
           CapHeight: cap_height,
-          XHeight: x_height
+          XHeight: x_height,
         )
 
+        first_char, last_char = unicode_mapping.keys.minmax
         hmtx = font.horizontal_metrics
-        widths = font.cmap.tables.first.code_map.map do |gid|
-          Integer(hmtx.widths[gid] * scale_factor)
-        end[32..]
+        widths =
+          (first_char..last_char).map { |code|
+            if unicode_mapping.key?(code)
+              gid = font.cmap.tables.first.code_map[code]
+              Integer(hmtx.widths[gid] * scale_factor)
+            else
+              # These characters are not in the document so we don't ever use
+              # these values but we need to encode them so let's use as little
+              # sapce as possible.
+              0
+            end
+          }
 
         # It would be nice to have Encoding set for the macroman subsets,
         # and only do a ToUnicode cmap for non-encoded unicode subsets.
@@ -335,65 +492,120 @@ module Prawn
         # For now, it's simplest to just create a unicode cmap for every font.
         # It offends my inner purist, but it'll do.
 
-        map = @subsets[subset].to_unicode_map
-
-        ranges = [[]]
-        map.keys.sort.reduce('') do |_s, code|
-          ranges << [] if ranges.last.length >= 100
-          unicode = map[code]
-          ranges.last << format(
-            '<%<code>02x><%<unicode>04x>',
-            code: code,
-            unicode: unicode
-          )
-        end
-
-        range_blocks =
-          ranges.reduce(+'') do |s, list|
-            s << format(
-              "%<lenght>d beginbfchar\n%<list>s\nendbfchar\n",
-              lenght: list.length,
-              list: list.join("\n")
-            )
-          end
-
-        to_unicode_cmap = UNICODE_CMAP_TEMPLATE % range_blocks.strip
-
-        cmap = @document.ref!({})
-        cmap << to_unicode_cmap
-        cmap.stream.compress!
+        to_unicode = @document.ref!({})
+        to_unicode << ToUnicodeCMap.new(unicode_mapping).generate
+        to_unicode.stream.compress! if @document.compression_enabled?
 
         reference.data.update(
-          Subtype: :TrueType,
           BaseFont: basename.to_sym,
           FontDescriptor: descriptor,
-          FirstChar: 32,
-          LastChar: 255,
+          FirstChar: first_char,
+          LastChar: last_char,
           Widths: @document.ref!(widths),
-          ToUnicode: cmap
+          ToUnicode: to_unicode,
+        )
+
+        if true_type
+          reference.data.update(Subtype: :TrueType)
+          descriptor.data.update(FontFile2: fontfile)
+        elsif open_type
+          @document.renderer.min_version(1.6)
+          reference.data.update(Subtype: :Type1)
+          descriptor.data.update(FontFile3: fontfile)
+          fontfile.data.update(Subtype: :OpenType)
+        end
+      end
+
+      def embed_full_font(reference)
+        embed_composite_font(reference, @ttf)
+      end
+
+      def embed_composite_font(reference, font)
+        if font_type(font) == :unknown
+          raise Error, %(Composite font embedding is not uspported for font "#{font.name}.")
+        end
+
+        true_type = font_type(font) == :true_type
+        open_type = font_type(font) == :open_type
+
+        fontfile = @document.ref!({})
+        fontfile.data[:Length1] = font.contents.size if true_type
+        fontfile.data[:Subtype] = :CIDFontType0C if open_type
+        fontfile.stream << font.contents.string
+        fontfile.stream.compress! if @document.compression_enabled?
+
+        # empirically, it looks like Adobe Reader will not display fonts
+        # if their font name is more than 33 bytes long. Strange. But true.
+        basename = font.name.postscript_name[0, 33].delete("\0")
+
+        descriptor = @document.ref!(
+          Type: :FontDescriptor,
+          FontName: basename.to_sym,
+          FontBBox: bbox,
+          Flags: pdf_flags,
+          StemV: stem_v,
+          ItalicAngle: italic_angle,
+          Ascent: @ascender,
+          Descent: @descender,
+          CapHeight: cap_height,
+          XHeight: x_height,
+        )
+        descriptor.data[:FontFile2] = fontfile if true_type
+        descriptor.data[:FontFile3] = fontfile if open_type
+
+        to_unicode = @document.ref!({})
+        to_unicode << ToUnicodeCMap.new(
+          font.cmap.unicode.first
+          .code_map
+          .reject { |cid, gid| gid.zero? || (0xd800..0xdfff).cover?(cid) }
+          .invert
+          .sort.to_h,
+          2, # Identity-H is a 2-byte encoding
+        ).generate
+        to_unicode.stream.compress! if @document.compression_enabled?
+
+        widths =
+          font.horizontal_metrics.widths.map { |w| (w * scale_factor).round }
+
+        child_font = @document.ref!(
+          Type: :Font,
+          BaseFont: basename.to_sym,
+          CIDSystemInfo: {
+            Registry: 'Adobe',
+            Ordering: 'Identity',
+            Supplement: 0,
+          },
+          FontDescriptor: descriptor,
+          W: [0, widths],
+        )
+        if true_type
+          child_font.data.update(
+            Subtype: :CIDFontType2,
+            CIDToGIDMap: :Identity,
+          )
+        end
+        if open_type
+          child_font.data[:Subtype] = :CIDFontType0
+        end
+
+        reference.data.update(
+          Subtype: :Type0,
+          BaseFont: basename.to_sym,
+          Encoding: :'Identity-H',
+          DescendantFonts: [child_font],
+          ToUnicode: to_unicode,
         )
       end
 
-      UNICODE_CMAP_TEMPLATE = <<-STR.strip.gsub(/^\s*/, '')
-        /CIDInit /ProcSet findresource begin
-        12 dict begin
-        begincmap
-        /CIDSystemInfo <<
-          /Registry (Adobe)
-          /Ordering (UCS)
-          /Supplement 0
-        >> def
-        /CMapName /Adobe-Identity-UCS def
-        /CMapType 2 def
-        1 begincodespacerange
-        <00><ff>
-        endcodespacerange
-        %s
-        endcmap
-        CMapName currentdict /CMap defineresource pop
+      def font_type(font)
+        if font.directory.tables.key?('glyf')
+          :true_type
+        elsif font.directory.tables.key?('CFF ')
+          :open_type
+        else
+          :unknown
         end
-        end
-      STR
+      end
 
       def read_ttf_file
         TTFunk::File.open(@name)

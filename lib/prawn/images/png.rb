@@ -1,38 +1,77 @@
 # encoding: ASCII-8BIT
-
 # frozen_string_literal: true
-
-# png.rb : Extracts the data from a PNG that is needed for embedding
-#
-# Based on some similar code in PDF::Writer by Austin Ziegler
-#
-# Copyright April 2008, James Healy.  All Rights Reserved.
-#
-# This is free software. Please see the LICENSE and COPYING files for details.
 
 require 'stringio'
 module Prawn
-  module Images
-    # A convenience class that wraps the logic for extracting the parts
-    # of a PNG image that we need to embed them in a PDF
-    #
+  module Images # rubocop: disable Style/Documentation
+    # A convenience class that wraps the logic for extracting the parts of a PNG
+    # image that we need to embed them in a PDF.
     class PNG < Image
       # @group Extension API
 
-      attr_reader :palette, :img_data, :transparency
-      attr_reader :width, :height, :bits
-      attr_reader :color_type, :compression_method, :filter_method
-      attr_reader :interlace_method, :alpha_channel
-      attr_accessor :scaled_width, :scaled_height
+      # Palette data.
+      # @return [String]
+      attr_reader :palette
 
+      # Image data.
+      # @return [String]
+      attr_reader :img_data
+
+      # Transparency data.
+      # @return [Hash{Symbol => String}]
+      attr_reader :transparency
+
+      # Image width in pixels.
+      # @return [Integer]
+      attr_reader :width
+
+      # Image height in pixels.
+      # @return [Integer]
+      attr_reader :height
+
+      # Bits per sample or per palette index.
+      # @return [Integer]
+      attr_reader :bits
+
+      # Color type.
+      # @return [Integer]
+      attr_reader :color_type
+
+      # Compression method.
+      # @return [Integer]
+      attr_reader :compression_method
+
+      # Filter method.
+      # @return [Integer]
+      attr_reader :filter_method
+
+      # Interlace method.
+      # @return [Integer]
+      attr_reader :interlace_method
+
+      # Extracted alpha-channel.
+      # @return [String, nil]
+      attr_reader :alpha_channel
+
+      # Scaled width of the image in PDF points.
+      # @return [Number]
+      attr_accessor :scaled_width
+
+      # Scaled height of the image in PDF points.
+      # @return [Number]
+      attr_accessor :scaled_height
+
+      # Can this image handler process this image?
+      #
+      # @param image_blob [String]
+      # @return [Boolean]
       def self.can_render?(image_blob)
         image_blob[0, 8].unpack('C*') == [137, 80, 78, 71, 13, 10, 26, 10]
       end
 
       # Process a new PNG image
       #
-      # <tt>data</tt>:: A binary string of PNG data
-      #
+      # @param data [String] A binary string of PNG data.
       def initialize(data)
         super()
         data = StringIO.new(data.dup)
@@ -93,8 +132,9 @@ module Prawn
         @img_data = Zlib::Inflate.inflate(@img_data)
       end
 
-      # number of color components to each pixel
+      # Number of color components to each pixel.
       #
+      # @return [Integer]
       def colors
         case color_type
         when 0, 3, 4
@@ -104,9 +144,11 @@ module Prawn
         end
       end
 
-      # split the alpha channel data from the raw image data in images
-      # where it's required.
+      # Split the alpha channel data from the raw image data in images where
+      # it's required.
       #
+      # @private
+      # @return [void]
       def split_alpha_channel!
         if alpha_channel?
           if color_type == 3
@@ -117,6 +159,9 @@ module Prawn
         end
       end
 
+      # Is there an alpha-channel in this image?
+      #
+      # @return [Boolean]
       def alpha_channel?
         return true if color_type == 4 || color_type == 6
         return @transparency.any? if color_type == 3
@@ -124,9 +169,11 @@ module Prawn
         false
       end
 
-      # Build a PDF object representing this image in +document+, and return
+      # Build a PDF object representing this image in `document`, and return
       # a Reference to it.
       #
+      # @param document [Prawn::Document]
+      # @return [PDF::Core::Reference]
       def build_pdf_object(document)
         if compression_method != 0
           raise Errors::UnsupportedImageType,
@@ -163,7 +210,7 @@ module Prawn
           Subtype: :Image,
           Height: height,
           Width: width,
-          BitsPerComponent: bits
+          BitsPerComponent: bits,
         )
 
         # append the actual image data to the object as a stream
@@ -174,8 +221,8 @@ module Prawn
             Predictor: 15,
             Colors: colors,
             BitsPerComponent: bits,
-            Columns: width
-          }
+            Columns: width,
+          },
         }
 
         # sort out the colours of the image
@@ -191,7 +238,7 @@ module Prawn
             :Indexed,
             :DeviceRGB,
             (palette.size / 3) - 1,
-            palette_obj
+            palette_obj,
           ]
         end
 
@@ -228,7 +275,7 @@ module Prawn
             Width: width,
             BitsPerComponent: bits,
             ColorSpace: :DeviceGray,
-            Decode: [0, 1]
+            Decode: [0, 1],
           )
           smask_obj.stream << alpha_channel
 
@@ -237,8 +284,8 @@ module Prawn
               Predictor: 15,
               Colors: 1,
               BitsPerComponent: bits,
-              Columns: width
-            }
+              Columns: width,
+            },
           }
           obj.data[:SMask] = smask_obj
         end
@@ -247,6 +294,8 @@ module Prawn
       end
 
       # Returns the minimum PDF version required to support this image.
+      #
+      # @return [Float]
       def min_pdf_version
         if bits > 8
           # 16-bit color only supported in 1.5+ (ISO 32000-1:2008 8.9.5.1)
@@ -265,18 +314,18 @@ module Prawn
         alpha_bytes = bits / 8
         color_bytes = colors * bits / 8
 
-        scanline_length = (color_bytes + alpha_bytes) * width + 1
+        scanline_length = ((color_bytes + alpha_bytes) * width) + 1
         scanlines = @img_data.bytesize / scanline_length
         pixels = width * height
 
         data = StringIO.new(@img_data)
         data.binmode
 
-        color_data = [0x00].pack('C') * (pixels * color_bytes + scanlines)
+        color_data = [0x00].pack('C') * ((pixels * color_bytes) + scanlines)
         color = StringIO.new(color_data)
         color.binmode
 
-        @alpha_channel = [0x00].pack('C') * (pixels * alpha_bytes + scanlines)
+        @alpha_channel = [0x00].pack('C') * ((pixels * alpha_bytes) + scanlines)
         alpha = StringIO.new(@alpha_channel)
         alpha.binmode
 
@@ -285,12 +334,12 @@ module Prawn
 
           filter = data.getbyte
 
-          color.putc filter
-          alpha.putc filter
+          color.putc(filter)
+          alpha.putc(filter)
 
           width.times do
-            color.write data.read(color_bytes)
-            alpha.write data.read(alpha_bytes)
+            color.write(data.read(color_bytes))
+            alpha.write(data.read(alpha_bytes))
           end
         end
 
@@ -319,14 +368,16 @@ module Prawn
 
           filter = data.getbyte
 
-          alpha.putc filter
+          alpha.putc(filter)
 
           width.times do
             color = data.read(1).unpack1('C')
-            alpha.putc alpha_palette[color]
+            alpha.putc(alpha_palette[color])
           end
         end
       end
     end
+
+    Prawn.image_handler.register(Prawn::Images::PNG)
   end
 end

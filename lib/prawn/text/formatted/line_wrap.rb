@@ -1,40 +1,49 @@
 # frozen_string_literal: true
 
-# core/text/formatted/line_wrap.rb : Implements individual line wrapping of
-#                                    formatted text
-#
-# Copyright February 2010, Daniel Nelson. All Rights Reserved.
-#
-# This is free software. Please see the LICENSE and COPYING files for details.
-#
-
 module Prawn
   module Text
-    module Formatted # :nodoc:
+    module Formatted
+      # Implements individual line wrapping of formatted text.
+      #
       # @private
-      class LineWrap # :nodoc:
-        # The width of the last wrapped line
+      class LineWrap
+        # The width of the last wrapped line.
         #
+        # @return [Number]
         def width
           @accumulated_width || 0
         end
 
-        # The number of spaces in the last wrapped line
+        # The number of spaces in the last wrapped line.
+        # @return [Integer]
         attr_reader :space_count
 
-        # Whether this line is the last line in the paragraph
+        # Whether this line is the last line in the paragraph.
+        #
+        # @return [Boolean]
         def paragraph_finished?
           @newline_encountered || next_string_newline? || @arranger.finished?
         end
 
+        # Break the fragment into tokens.
+        #
+        # @param fragment [String]
+        # @return [Array<String>]
         def tokenize(fragment)
           fragment.scan(scan_pattern(fragment.encoding))
         end
 
-        # Work in conjunction with the PDF::Formatted::Arranger
-        # defined in the :arranger option to determine what formatted text
-        # will fit within the width defined by the :width option
+        # Work in conjunction with the {Prawn::Text::Formatted::Arranger}
+        # defined in the `:arranger` option to determine what formatted text
+        # will fit within the width defined by the `:width` option.
         #
+        # @param options [Hash{Symbol => any}]
+        # @option options :document [Prawn::Document]
+        # @option options :kerning [Boolean]
+        # @option options :width [Number]
+        # @option options :disable_wrap_by_char [Boolean]
+        # @option options :arranger [Prawn::Text::Formatted::Arranger]
+        # @return [String]
         def wrap_line(options)
           initialize_line(options)
 
@@ -138,7 +147,7 @@ module Prawn
             "[^#{ebc}]+",
             "[#{ews}]+",
             "#{ehy}+[^#{ebc}]*",
-            eshy.to_s
+            eshy.to_s,
           ]
 
           pattern = patterns
@@ -154,17 +163,17 @@ module Prawn
         #
         def word_division_scan_pattern(encoding = ::Encoding::UTF_8)
           common_whitespaces =
-            ["\t", "\n", "\v", "\r", ' '].map do |c|
+            ["\t", "\n", "\v", "\r", ' '].map { |c|
               c.encode(encoding)
-            end
+            }
 
           Regexp.union(
             common_whitespaces +
             [
               zero_width_space(encoding),
               soft_hyphen(encoding),
-              hyphen(encoding)
-            ].compact
+              hyphen(encoding),
+            ].compact,
           )
         end
 
@@ -179,7 +188,7 @@ module Prawn
           [
             whitespace(encoding),
             soft_hyphen(encoding),
-            hyphen(encoding)
+            hyphen(encoding),
           ].join('')
         end
 
@@ -230,7 +239,7 @@ module Prawn
           else
             update_output_based_on_last_fragment(
               fragment,
-              soft_hyphen(fragment.encoding)
+              soft_hyphen(fragment.encoding),
             )
             update_line_status_based_on_last_output
             pull_preceding_fragment_to_join_this_one?(fragment)
@@ -251,7 +260,7 @@ module Prawn
           @arranger.update_last_string(
             @fragment_output,
             remaining_text,
-            normalized_soft_hyphen
+            normalized_soft_hyphen,
           )
         end
 
