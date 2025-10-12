@@ -59,6 +59,7 @@ suported by Ruby Core Team and JRuby versions of matching Ruby version. However
 we will accept patches to fix problems on other Ruby platforms if they aren't
 too invasive.
 
+
 ## Installing Prawn
 
 Prawn is distributed via RubyGems, and can be installed the usual way that you
@@ -84,6 +85,7 @@ end
 
 Of course, you'll probably want to do more interesting things than that...
 
+
 ## Manual
 
 The manual is a series of examples that demonstrate use of the wide range of
@@ -101,6 +103,7 @@ To build the manual, here's what you need to do:
 3. Run `gem install -g`
 4. Run `rake manual`, which will generate _manual.pdf_ in the project root
 
+
 ## Release Policies
 
 We're trying to not break things unnecessarily but we don't formally follow
@@ -115,6 +118,7 @@ after updating Prawn.
 Be sure to read the release notes in
 [CHANGELOG.md](https://github.com/tablecheck/prawn-continued/blob/master/CHANGELOG.md) each
 time we cut a new release, and lock your gems accordingly.
+
 
 ## Support
 
@@ -131,11 +135,13 @@ publicly, and be sure to reduce your example code as much as possible so that
 those who are responding to your question can more easily see what the issue
 might be.
 
+
 ## Code of Conduct
 
 Prawn adheres to the [Contributor Covenant](CODE_OF_CONDUCT.md). Unacceptable
 behavior can be reported to conduct@prawnpdf.org which is monitored by the core
 team.
+
 
 ## Contributing
 
